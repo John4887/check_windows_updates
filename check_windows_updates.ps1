@@ -1,13 +1,13 @@
 <#
 .VERSION
-1.2.0
+1.3.0
 
 .AUTOR
 John Gonzalez
 #>
 
 $script = "check_windows_updates.ps1"
-$version = "1.2.0"
+$version = "1.3.0"
 $author = "John Gonzalez"
 
 if ($args.Contains("-v")) {
@@ -18,22 +18,19 @@ if ($args.Contains("-v")) {
 # Check for available updates
 $updateSession = New-Object -ComObject Microsoft.Update.Session
 $updateSearcher = $updateSession.CreateUpdateSearcher()
-$updates = $updateSearcher.Search("IsInstalled=0")
 
-# Determine status based on number and severity of updates
+# Search for all updates
+$allUpdates = $updateSearcher.Search("IsHidden=0")
 
-# Filtrer les mises à jour téléchargées et non téléchargées
-$downloadedUpdates = $updates.Updates | Where-Object {$_.IsDownloaded -eq $true -or $_.IsDownloaded -eq $false}
+# Filter out downloaded and installed updates
+$relevantUpdates = $allUpdates.Updates | Where-Object {($_.IsDownloaded -eq $false -or $_.IsInstalled -eq $false) -and $_.Title -notlike "Security Intelligence Update for Microsoft Defender Antivirus*"}
 
-# Filtrer les mises à jour installées
-$installedUpdates = $updates.Updates | Where-Object {$_.IsInstalled -eq $true}
+# Get the count of available updates
+$updateCount = $relevantUpdates.Count
 
-# Obtenir le nombre de mises à jour disponibles
-$updateCount = $downloadedUpdates.Count
-
-# Obtenir le nombre de mises à jour critiques et importantes
-$criticalCount = $downloadedUpdates | Where-Object {($_.MsrcSeverity -ge "Critical" -and $_.IsHidden -eq $false) -or $_.Title -like "Security Intelligence Update for Microsoft Defender Antivirus*"} | Measure-Object | Select-Object -ExpandProperty Count
-$importantCount = $downloadedUpdates | Where-Object {$_.MsrcSeverity -eq "Important" -and $_.IsHidden -eq $false -and $_.Title -notlike "Security Intelligence Update for Microsoft Defender Antivirus*"} | Measure-Object | Select-Object -ExpandProperty Count
+# Get the count of important and critical updates
+$criticalCount = $relevantUpdates | Where-Object {($_.MsrcSeverity -ge "Critical" -and $_.IsHidden -eq $false) -or $_.Title -like "Security Intelligence Update for Microsoft Defender Antivirus*"} | Measure-Object | Select-Object -ExpandProperty Count
+$importantCount = $relevantUpdates | Where-Object {$_.MsrcSeverity -eq "Important" -and $_.IsHidden -eq $false -and $_.Title -notlike "Security Intelligence Update for Microsoft Defender Antivirus*"} | Measure-Object | Select-Object -ExpandProperty Count
 
 # Set the exit code and message based on the number and severity of updates
 
